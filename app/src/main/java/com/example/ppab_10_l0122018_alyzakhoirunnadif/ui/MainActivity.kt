@@ -179,4 +179,8 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         binding.btnToggleChangeLog.text = getString(R.string.show_change_log)
     }
 
+    override fun onResume() {
+        super.onResume()
+        hideChangeLog()
+    }
 }
