@@ -1,6 +1,7 @@
 package com.example.ppab_10_l0122018_alyzakhoirunnadif.ui
 
 import UserPreference
+import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -9,6 +10,7 @@ import android.text.TextUtils
 import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import com.example.ppab_10_l0122018_alyzakhoirunnadif.R
 import com.example.ppab_10_l0122018_alyzakhoirunnadif.UserModel
@@ -31,7 +33,6 @@ class FormActivity : AppCompatActivity(), View.OnClickListener {
         const val RESULT_CODE = 101
         const val TYPE_ADD = 1
         const val TYPE_EDIT = 2
-        private const val PICK_IMAGE_REQUEST = 1
     }
 
     private lateinit var userModel: UserModel
@@ -85,10 +86,9 @@ class FormActivity : AppCompatActivity(), View.OnClickListener {
     }
 
     private fun chooseImage() {
-        val intent = Intent()
+        val intent = Intent(Intent.ACTION_GET_CONTENT)
         intent.type = "image/*"
-        intent.action = Intent.ACTION_GET_CONTENT
-        startActivityForResult(Intent.createChooser(intent, "Select Picture"), PICK_IMAGE_REQUEST)
+        resultLauncher.launch(intent)
     }
 
     override fun onClick(view: View) {
@@ -134,7 +134,7 @@ class FormActivity : AppCompatActivity(), View.OnClickListener {
             return
         }
 
-        saveUser(name, email, age, phoneNo, gender, selectedImageUri.toString())
+        saveUser(name, email, age, phoneNo, gender, selectedImageUri)
         val intent = Intent(this, MainActivity::class.java)
         startActivity(intent)
         finish()
@@ -171,7 +171,7 @@ class FormActivity : AppCompatActivity(), View.OnClickListener {
         }
 
         userPreference.setUser(userModel)
-        Toast.makeText(this, "Data tersimpan", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "Data Saved", Toast.LENGTH_SHORT).show()
 
         val changeLog = StringBuilder()
         if (name != oldName) {
@@ -206,11 +206,11 @@ class FormActivity : AppCompatActivity(), View.OnClickListener {
         return super.onOptionsItemSelected(item)
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == PICK_IMAGE_REQUEST && resultCode == RESULT_OK && data != null && data.data != null) {
-            val uri: Uri? = data.data
-            if (uri != null) {
+    private val resultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val data: Intent? = result.data
+            val uri = data?.data
+            uri?.let {
                 val imageFile = saveImageToFile(uri)
                 if (imageFile != null) {
                     binding.ivProfile.setImageURI(uri)
@@ -254,12 +254,19 @@ class FormActivity : AppCompatActivity(), View.OnClickListener {
                 logFile.createNewFile()
             }
 
-            val writer = FileWriter(logFile, true)
-            writer.appendLine("Changes made at ${SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault()).format(Date())}")
-            writer.appendLine(changeLog)
-            writer.appendLine("---------------------------------------------")
-            writer.flush()
-            writer.close()
+            val tempFile = File.createTempFile("temp", null, logFile.parentFile)
+            val writer = FileWriter(tempFile)
+            writer.use {
+                writer.write("Changes made at ${SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault()).format(Date())}\n")
+                writer.write(changeLog + "\n")
+                writer.write("---------------------------------------------\n")
+                logFile.bufferedReader().use { reader ->
+                    reader.lineSequence().forEach { line ->
+                        writer.write(line + "\n")
+                    }
+                }
+            }
+            tempFile.renameTo(logFile)
         } catch (e: IOException) {
             e.printStackTrace()
         }
