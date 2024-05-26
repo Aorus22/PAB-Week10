@@ -23,6 +23,7 @@ import java.util.*
 class FormActivity : AppCompatActivity(), View.OnClickListener {
 
     private lateinit var binding: ActivityFormBinding
+    private var selectedImageUri: String? = null
 
     companion object {
         const val EXTRA_TYPE_FORM = "extra_type_form"
@@ -136,10 +137,13 @@ class FormActivity : AppCompatActivity(), View.OnClickListener {
             return
         }
 
-        saveUser(name, email, age, phoneNo, gender)
+        saveUser(name, email, age, phoneNo, gender, selectedImageUri.toString())
+        val intent = Intent(this, MainActivity::class.java)
+        startActivity(intent)
+        finish()
     }
 
-    private fun saveUser(name: String, email: String, age: String, phoneNo: String, gender: String) {
+    private fun saveUser(name: String, email: String, age: String, phoneNo: String, gender: String, selectedImageUri:String) {
         val userPreference = UserPreference(this)
 
         val oldName = userModel.name ?: ""
@@ -154,6 +158,15 @@ class FormActivity : AppCompatActivity(), View.OnClickListener {
         userModel.age = age.toInt()
         userModel.phoneNumber = phoneNo
         userModel.gender = gender
+
+        if (selectedImageUri.isNotEmpty() && oldProfileImage.isNotEmpty()) {
+            val oldImageFile = File(oldProfileImage)
+            if (oldImageFile.exists()) {
+                oldImageFile.delete()
+            }
+        }
+
+        userModel.profileImage = selectedImageUri
 
         userPreference.setUser(userModel)
         Toast.makeText(this, "Data tersimpan", Toast.LENGTH_SHORT).show()
@@ -194,7 +207,7 @@ class FormActivity : AppCompatActivity(), View.OnClickListener {
             }
 
             val writer = FileWriter(logFile, true)
-            writer.appendLine("Changes made at ${SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault()).format(Date())}:")
+            writer.appendLine("Changes made at ${SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault()).format(Date())}")
             writer.appendLine(changeLog)
             writer.appendLine("---------------------------------------------")
             writer.flush()
@@ -224,7 +237,7 @@ class FormActivity : AppCompatActivity(), View.OnClickListener {
                 val imageFile = saveImageToFile(uri)
                 if (imageFile != null) {
                     binding.ivProfile.setImageURI(uri)
-                    userModel.profileImage = imageFile.absolutePath
+                    selectedImageUri = imageFile.absolutePath
                 } else {
                     Toast.makeText(this, "Failed to save image", Toast.LENGTH_SHORT).show()
                 }
@@ -233,14 +246,11 @@ class FormActivity : AppCompatActivity(), View.OnClickListener {
     }
 
     private fun saveImageToFile(uri: Uri): File? {
-        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        val imageFileName = "JPEG_" + timeStamp + "_"
+        val timeStamp: String = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val imageFileName = "profilephoto$timeStamp.jpg"
         val storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES)
-        val imageFile = File.createTempFile(
-            imageFileName,
-            ".jpg",
-            storageDir
-        )
+        val imageFile = File(storageDir, imageFileName)
+
         try {
             val inputStream = contentResolver.openInputStream(uri)
             val outputStream = FileOutputStream(imageFile)

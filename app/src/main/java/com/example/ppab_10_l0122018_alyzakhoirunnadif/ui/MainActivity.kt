@@ -109,6 +109,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
             try {
                 val uri = Uri.parse(userModel.profileImage)
                 binding.ivProfileImage.setImageURI(uri)
+                binding.tvUri.text = userModel.profileImage
             } catch (e: Exception) {
                 e.printStackTrace()
                 binding.ivProfileImage.setImageResource(R.drawable.ic_person)
