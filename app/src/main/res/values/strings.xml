@@ -1,0 +1,20 @@
+<resources>
+    <string name="app_name">PPAB-10_L0122018_AlyzaKhoirunNadif</string>
+    <string name="name">Name</string>
+    <string name="email">Email</string>
+    <string name="phone_number">No Handphone</string>
+    <string name="age">Age</string>
+    <string name="male">Male</string>
+    <string name="female">Female</string>
+    <string name="save">Simpan</string>
+    <string name="gender">Gender</string>
+    <string name="change">Ubah</string>
+    <string name="dummy_name">Nadif</string>
+    <string name="dummy_email">alyzanadif04@gmail.com</string>
+    <string name="dummynumber">123456</string>
+    <string name="dummyage">30</string>
+    <string name="dummyisgender">male</string>
+    <string name="dark_mode">Dark Mode</string>
+    <string name="choose_image">Choose Image</string>
+    <string name="profile_photo">Profile Photo</string>
+</resources>
