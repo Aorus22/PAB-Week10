@@ -14,6 +14,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.lifecycle.ViewModelProvider
+import com.example.ppab_10_l0122018_alyzakhoirunnadif.FileHelper
 import com.example.ppab_10_l0122018_alyzakhoirunnadif.MainViewModel
 import com.example.ppab_10_l0122018_alyzakhoirunnadif.R
 import com.example.ppab_10_l0122018_alyzakhoirunnadif.SettingPreferences
@@ -157,20 +158,19 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
     private fun displayChangeLog() {
         val directory = getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS)
         val changeLogFile = File(directory, "changelog.txt")
-        try {
-            val reader = BufferedReader(FileReader(changeLogFile))
-            val stringBuilder = StringBuilder()
-            var line: String?
-            while (reader.readLine().also { line = it } != null) {
-                stringBuilder.append(line).append("\n")
+
+        if (changeLogFile.exists()) {
+            try {
+                val fileModel = FileHelper.readFromFile(this, "changelog.txt")
+                binding.tvChangeLog.text = fileModel.data
+                binding.btnToggleChangeLog.text = getString(R.string.hide_change_log)
+                binding.scrollView.visibility = VISIBLE
+            } catch (e: IOException) {
+                e.printStackTrace()
+                Toast.makeText(this, "Failed to read changelog", Toast.LENGTH_SHORT).show()
             }
-            reader.close()
-            binding.tvChangeLog.text = stringBuilder.toString()
-            binding.btnToggleChangeLog.text = getString(R.string.hide_change_log)
-            binding.scrollView.visibility = VISIBLE
-        } catch (e: IOException) {
-            e.printStackTrace()
-            Toast.makeText(this, "Failed to read changelog", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(this, "Changelog file does not exist", Toast.LENGTH_SHORT).show()
         }
     }
 

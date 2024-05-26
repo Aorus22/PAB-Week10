@@ -12,6 +12,8 @@ import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import com.example.ppab_10_l0122018_alyzakhoirunnadif.FileHelper
+import com.example.ppab_10_l0122018_alyzakhoirunnadif.FileModel
 import com.example.ppab_10_l0122018_alyzakhoirunnadif.R
 import com.example.ppab_10_l0122018_alyzakhoirunnadif.UserModel
 import com.example.ppab_10_l0122018_alyzakhoirunnadif.databinding.ActivityFormBinding
@@ -246,29 +248,23 @@ class FormActivity : AppCompatActivity(), View.OnClickListener {
     }
 
     private fun saveChangeLogToFile(changeLog: String) {
-        val directory = getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS)
-        val logFile = File(directory, "changelog.txt")
+        val timestamp = SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault()).format(Date())
+        val newLog = StringBuilder().apply {
+            append("Changes made at $timestamp\n")
+            append(changeLog).append("\n")
+            append("---------------------------------------------\n")
+        }.toString()
+
+        val fileModel = FileModel().apply {
+            filename = "changelog.txt"
+            data = newLog
+        }
 
         try {
-            if (!logFile.exists()) {
-                logFile.createNewFile()
-            }
-
-            val tempFile = File.createTempFile("temp", null, logFile.parentFile)
-            val writer = FileWriter(tempFile)
-            writer.use {
-                writer.write("Changes made at ${SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault()).format(Date())}\n")
-                writer.write(changeLog + "\n")
-                writer.write("---------------------------------------------\n")
-                logFile.bufferedReader().use { reader ->
-                    reader.lineSequence().forEach { line ->
-                        writer.write(line + "\n")
-                    }
-                }
-            }
-            tempFile.renameTo(logFile)
+            FileHelper.prependToFile(this, fileModel)
         } catch (e: IOException) {
             e.printStackTrace()
+            Toast.makeText(this, "Failed to save change log", Toast.LENGTH_SHORT).show()
         }
     }
 
