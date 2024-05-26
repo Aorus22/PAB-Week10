@@ -141,8 +141,9 @@ class FormActivity : AppCompatActivity(), View.OnClickListener {
         }
 
         saveUser(name, email, age, phoneNo, gender, selectedImageUri!!)
-        val intent = Intent(this, MainActivity::class.java)
-        startActivity(intent)
+        val intent = Intent()
+        intent.putExtra(EXTRA_RESULT, userModel)
+        setResult(RESULT_CODE, intent)
         finish()
     }
 
