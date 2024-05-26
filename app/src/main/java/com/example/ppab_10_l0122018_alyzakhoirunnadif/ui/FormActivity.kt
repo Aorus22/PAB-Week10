@@ -19,7 +19,6 @@ import com.example.ppab_10_l0122018_alyzakhoirunnadif.UserModel
 import com.example.ppab_10_l0122018_alyzakhoirunnadif.databinding.ActivityFormBinding
 import java.io.File
 import java.io.FileOutputStream
-import java.io.FileWriter
 import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.*
@@ -27,7 +26,7 @@ import java.util.*
 class FormActivity : AppCompatActivity(), View.OnClickListener {
 
     private lateinit var binding: ActivityFormBinding
-    private lateinit var selectedImageUri: String
+    private var selectedImageUri: String? = null
 
     companion object {
         const val EXTRA_TYPE_FORM = "extra_type_form"
@@ -136,7 +135,12 @@ class FormActivity : AppCompatActivity(), View.OnClickListener {
             return
         }
 
-        saveUser(name, email, age, phoneNo, gender, selectedImageUri)
+        if (selectedImageUri == null) {
+            Toast.makeText(this, "Selected image is empty", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        saveUser(name, email, age, phoneNo, gender, selectedImageUri!!)
         val intent = Intent(this, MainActivity::class.java)
         startActivity(intent)
         finish()
@@ -146,15 +150,17 @@ class FormActivity : AppCompatActivity(), View.OnClickListener {
         return android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()
     }
 
-    private fun saveUser(name: String, email: String, age: String, phoneNo: String, gender: String, selectedImageUri:String) {
+    private fun saveUser(name: String, email: String, age: String, phoneNo: String, gender: String, selectedImageUri: String) {
         val userPreference = UserPreference(this)
 
-        val oldName = userModel.name ?: ""
-        val oldEmail = userModel.email ?: ""
-        val oldAge = userModel.age.toString()
-        val oldPhoneNo = userModel.phoneNumber ?: ""
-        val oldGender = userModel.gender ?: ""
-        val oldProfileImage = userModel.profileImage ?: ""
+        val oldUserModel = UserModel(
+            name = userModel.name ?: "",
+            email = userModel.email ?: "",
+            age = userModel.age,
+            phoneNumber = userModel.phoneNumber ?: "",
+            gender = userModel.gender ?: "",
+            profileImage = userModel.profileImage ?: ""
+        )
 
         userModel.name = name
         userModel.email = email
@@ -162,36 +168,39 @@ class FormActivity : AppCompatActivity(), View.OnClickListener {
         userModel.phoneNumber = phoneNo
         userModel.gender = gender
 
-        if (selectedImageUri != oldProfileImage) {
-            if (selectedImageUri.isNotEmpty() && oldProfileImage.isNotEmpty()) {
-                val oldImageFile = File(oldProfileImage)
-                if (oldImageFile.exists()) {
-                    oldImageFile.delete()
-                }
-                userModel.profileImage = selectedImageUri
+        if (selectedImageUri != oldUserModel.profileImage && selectedImageUri.isNotEmpty()) {
+            userModel.profileImage = selectedImageUri
+
+            if (oldUserModel.profileImage!!.isNotEmpty()) {
+                val oldImageFile = oldUserModel.profileImage?.let { File(it) }
+                oldImageFile?.takeIf { it.exists() }?.delete()
             }
         }
 
         userPreference.setUser(userModel)
         Toast.makeText(this, "Data Saved", Toast.LENGTH_SHORT).show()
 
+        generateChangeLog(oldUserModel, userModel)
+    }
+
+    private fun generateChangeLog(oldUserModel: UserModel, newUserModel: UserModel) {
         val changeLog = StringBuilder()
-        if (name != oldName) {
-            changeLog.append("Name: $oldName -> $name\n")
+
+        val properties = UserModel::class.java.declaredFields
+        for (field in properties) {
+            field.isAccessible = true
+            val oldValue = field.get(oldUserModel)
+            val newValue = field.get(newUserModel)
+            if (field.name != "profileImage") {
+                if (oldValue != newValue) {
+                    changeLog.append("${field.name.replaceFirstChar {
+                        if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString()
+                    }}: ${oldValue ?: ""} -> ${newValue ?: ""}\n")
+                }
+            }
         }
-        if (email != oldEmail) {
-            changeLog.append("Email: $oldEmail -> $email\n")
-        }
-        if (age != oldAge) {
-            changeLog.append("Age: $oldAge -> $age\n")
-        }
-        if (phoneNo != oldPhoneNo) {
-            changeLog.append("No Handphone: $oldPhoneNo -> $phoneNo\n")
-        }
-        if (gender != oldGender) {
-            changeLog.append("Gender: $oldGender -> $gender\n")
-        }
-        if (selectedImageUri != oldProfileImage) {
+
+        if (newUserModel.profileImage != oldUserModel.profileImage) {
             changeLog.append("Profile Photo Changed\n")
         }
 
@@ -210,14 +219,11 @@ class FormActivity : AppCompatActivity(), View.OnClickListener {
 
     private val resultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            val data: Intent? = result.data
-            val uri = data?.data
-            uri?.let {
-                val imageFile = saveImageToFile(uri)
-                if (imageFile != null) {
+            result.data?.data?.let { uri ->
+                saveImageToFile(uri)?.let { imageFile ->
                     binding.ivProfile.setImageURI(uri)
                     selectedImageUri = imageFile.absolutePath
-                } else {
+                } ?: run {
                     Toast.makeText(this, "Failed to save image", Toast.LENGTH_SHORT).show()
                 }
             }
@@ -271,10 +277,8 @@ class FormActivity : AppCompatActivity(), View.OnClickListener {
     override fun onDestroy() {
         super.onDestroy()
         if (!userModel.profileImage.isNullOrEmpty() && userModel.profileImage != selectedImageUri) {
-            val oldImageFile = File(selectedImageUri)
-            if (oldImageFile.exists()) {
-                oldImageFile.delete()
-            }
+            val oldImageFile = selectedImageUri?.let { File(it) }
+            oldImageFile?.takeIf { it.exists() }?.delete()
         }
     }
 }
