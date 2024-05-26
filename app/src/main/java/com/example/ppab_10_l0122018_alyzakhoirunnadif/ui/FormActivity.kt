@@ -20,6 +20,7 @@ import com.example.ppab_10_l0122018_alyzakhoirunnadif.databinding.ActivityFormBi
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.io.InputStream
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -231,26 +232,72 @@ class FormActivity : AppCompatActivity(), View.OnClickListener {
         }
     }
 
-    private fun saveImageToFile(uri: Uri): File? {
-        val timeStamp: String = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        val imageFileName = "profilephoto$timeStamp.jpg"
-        val storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES)
-        val imageFile = File(storageDir, imageFileName)
+    private fun validateImageSize(uri: Uri): Boolean {
+        val contentResolver = applicationContext.contentResolver
+        var inputStream: InputStream? = null
+        var totalBytesRead = 0
 
         try {
-            val inputStream = contentResolver.openInputStream(uri)
-            val outputStream = FileOutputStream(imageFile)
-            val buffer = ByteArray(1024)
+            inputStream = contentResolver.openInputStream(uri)
+            val bufferSize = 1024
+            val buffer = ByteArray(bufferSize)
             var bytesRead: Int
-            while (inputStream?.read(buffer).also { bytesRead = it!! } != -1) {
+
+            while (inputStream?.read(buffer, 0, bufferSize).also { bytesRead = it!! } != -1) {
+                totalBytesRead += bytesRead
+                if (totalBytesRead > 5 * 1024 * 1024) {
+                    Toast.makeText(this, "Maximum image size is 5 MB", Toast.LENGTH_SHORT).show()
+                    return false
+                }
+            }
+
+            return true
+        } catch (e: IOException) {
+            e.printStackTrace()
+        } finally {
+            inputStream?.close()
+        }
+
+        return false
+    }
+
+    private fun saveImageToFile(uri: Uri): File? {
+        if (!validateImageSize(uri)) {
+            return null
+        }
+
+        val contentResolver = applicationContext.contentResolver
+        var inputStream: InputStream? = null
+        var outputStream: FileOutputStream? = null
+        val imageFile: File?
+
+        try {
+            inputStream = contentResolver.openInputStream(uri)
+            val bufferSize = 1024
+            val buffer = ByteArray(bufferSize)
+            var bytesRead: Int
+
+            val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            val imageFileName = "profilephoto$timeStamp.jpg"
+            val storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+            imageFile = File(storageDir, imageFileName)
+            inputStream?.close()
+
+            inputStream = contentResolver.openInputStream(uri)
+            outputStream = FileOutputStream(imageFile)
+
+            while (inputStream?.read(buffer, 0, bufferSize).also { bytesRead = it!! } != -1) {
                 outputStream.write(buffer, 0, bytesRead)
             }
-            inputStream?.close()
-            outputStream.close()
+
             return imageFile
         } catch (e: IOException) {
             e.printStackTrace()
+        } finally {
+            inputStream?.close()
+            outputStream?.close()
         }
+
         return null
     }
 
