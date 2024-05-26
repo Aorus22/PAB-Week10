@@ -4,8 +4,11 @@ import UserPreference
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.Environment
 import android.view.View
+import android.view.View.VISIBLE
 import android.widget.CompoundButton
+import android.widget.Toast
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -19,6 +22,10 @@ import com.example.ppab_10_l0122018_alyzakhoirunnadif.ViewModelFactory
 import com.example.ppab_10_l0122018_alyzakhoirunnadif.dataStore
 import com.example.ppab_10_l0122018_alyzakhoirunnadif.databinding.ActivityMainBinding
 import com.google.android.material.switchmaterial.SwitchMaterial
+import java.io.BufferedReader
+import java.io.File
+import java.io.FileReader
+import java.io.IOException
 
 class MainActivity : AppCompatActivity(), View.OnClickListener {
 
@@ -50,6 +57,14 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         showExistingPreference()
 
         binding.btnSave.setOnClickListener(this)
+
+        binding.btnToggleChangeLog.setOnClickListener {
+            if (binding.scrollView.visibility == View.GONE) {
+                displayChangeLog()
+            } else {
+                hideChangeLog()
+            }
+        }
 
         val switchTheme = findViewById<SwitchMaterial>(R.id.switch_theme)
 
@@ -110,7 +125,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
                 isPreferenceEmpty = false
             }
             else -> {
-                binding.btnSave.text = getString(R.string.save)
+                binding.btnSave.text = getString(R.string.input_data)
                 isPreferenceEmpty = true
             }
         }
@@ -138,4 +153,30 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
             resultLauncher.launch(intent)
         }
     }
+
+    private fun displayChangeLog() {
+        val directory = getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS)
+        val changeLogFile = File(directory, "changelog.txt")
+        try {
+            val reader = BufferedReader(FileReader(changeLogFile))
+            val stringBuilder = StringBuilder()
+            var line: String?
+            while (reader.readLine().also { line = it } != null) {
+                stringBuilder.append(line).append("\n")
+            }
+            reader.close()
+            binding.tvChangeLog.text = stringBuilder.toString()
+            binding.btnToggleChangeLog.text = getString(R.string.hide_change_log)
+            binding.scrollView.visibility = VISIBLE
+        } catch (e: IOException) {
+            e.printStackTrace()
+            Toast.makeText(this, "Failed to read changelog", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun hideChangeLog() {
+        binding.scrollView.visibility = View.GONE
+        binding.btnToggleChangeLog.text = getString(R.string.show_change_log)
+    }
+
 }

@@ -15,6 +15,7 @@ import com.example.ppab_10_l0122018_alyzakhoirunnadif.UserModel
 import com.example.ppab_10_l0122018_alyzakhoirunnadif.databinding.ActivityFormBinding
 import java.io.File
 import java.io.FileOutputStream
+import java.io.FileWriter
 import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.*
@@ -33,7 +34,6 @@ class FormActivity : AppCompatActivity(), View.OnClickListener {
         private const val FIELD_DIGIT_ONLY = "Hanya boleh terisi numerik"
         private const val FIELD_IS_NOT_VALID = "Email tidak valid"
         private const val PICK_IMAGE_REQUEST = 1
-        private const val REQUEST_CODE_PERMISSION = 101
     }
 
     private lateinit var userModel: UserModel
@@ -54,11 +54,11 @@ class FormActivity : AppCompatActivity(), View.OnClickListener {
 
         when (formType) {
             TYPE_ADD -> {
-                actionBarTitle = "Tambah Baru"
-                btnTitle = "Simpan"
+                actionBarTitle = "Add New"
+                btnTitle = "Save"
             }
             TYPE_EDIT -> {
-                actionBarTitle = "Ubah"
+                actionBarTitle = "Change"
                 btnTitle = "Update"
                 showPreferenceInForm()
             }
@@ -96,49 +96,7 @@ class FormActivity : AppCompatActivity(), View.OnClickListener {
     override fun onClick(view: View) {
         when (view.id) {
             R.id.btn_save -> {
-                val name = binding.edtName.text.toString().trim()
-                val email = binding.edtEmail.text.toString().trim()
-                val age = binding.edtAge.text.toString().trim()
-                val phoneNo = binding.edtPhone.text.toString().trim()
-                val gender = if (binding.rbMale.isChecked) "Male" else "Female"
-
-                if (name.isEmpty()) {
-                    binding.edtName.error = FIELD_REQUIRED
-                    return
-                }
-
-                if (email.isEmpty()) {
-                    binding.edtEmail.error = FIELD_REQUIRED
-                    return
-                }
-
-                if (!isValidEmail(email)) {
-                    binding.edtEmail.error = FIELD_IS_NOT_VALID
-                    return
-                }
-
-                if (age.isEmpty()) {
-                    binding.edtAge.error = FIELD_REQUIRED
-                    return
-                }
-
-                if (phoneNo.isEmpty()) {
-                    binding.edtPhone.error = FIELD_REQUIRED
-                    return
-                }
-
-                if (!TextUtils.isDigitsOnly(phoneNo)) {
-                    binding.edtPhone.error = FIELD_DIGIT_ONLY
-                    return
-                }
-
-                saveUser(name, email, age, phoneNo, gender)
-
-                val resultIntent = Intent()
-                resultIntent.putExtra(EXTRA_RESULT, userModel)
-                setResult(RESULT_CODE, resultIntent)
-
-                finish()
+                validateAndSaveUser()
             }
             R.id.btn_choose_image -> {
                 chooseImage()
@@ -146,8 +104,50 @@ class FormActivity : AppCompatActivity(), View.OnClickListener {
         }
     }
 
+    private fun validateAndSaveUser() {
+        val name = binding.edtName.text.toString().trim()
+        val email = binding.edtEmail.text.toString().trim()
+        val age = binding.edtAge.text.toString().trim()
+        val phoneNo = binding.edtPhone.text.toString().trim()
+        val gender = if (binding.rbMale.isChecked) "Male" else "Female"
+
+        if (name.isEmpty() || email.isEmpty() || age.isEmpty() || phoneNo.isEmpty()) {
+            Toast.makeText(this, "All fields are required", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (name.length > 50) {
+            Toast.makeText(this, "Name must be at most 50 characters long", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (!isValidEmail(email)) {
+            Toast.makeText(this, "Invalid email", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (!TextUtils.isDigitsOnly(age) || !TextUtils.isDigitsOnly(phoneNo)) {
+            Toast.makeText(this, "Age and Phone Number must be numeric", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (!binding.rbMale.isChecked && !binding.rbFemale.isChecked) {
+            Toast.makeText(this, "Gender must be selected", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        saveUser(name, email, age, phoneNo, gender)
+    }
+
     private fun saveUser(name: String, email: String, age: String, phoneNo: String, gender: String) {
         val userPreference = UserPreference(this)
+
+        val oldName = userModel.name ?: ""
+        val oldEmail = userModel.email ?: ""
+        val oldAge = userModel.age.toString()
+        val oldPhoneNo = userModel.phoneNumber ?: ""
+        val oldGender = userModel.gender ?: ""
+        val oldProfileImage = userModel.profileImage ?: ""
 
         userModel.name = name
         userModel.email = email
@@ -157,6 +157,51 @@ class FormActivity : AppCompatActivity(), View.OnClickListener {
 
         userPreference.setUser(userModel)
         Toast.makeText(this, "Data tersimpan", Toast.LENGTH_SHORT).show()
+
+        val changeLog = StringBuilder()
+        if (name != oldName) {
+            changeLog.append("Name: $oldName -> $name\n")
+        }
+        if (email != oldEmail) {
+            changeLog.append("Email: $oldEmail -> $email\n")
+        }
+        if (age != oldAge) {
+            changeLog.append("Age: $oldAge -> $age\n")
+        }
+        if (phoneNo != oldPhoneNo) {
+            changeLog.append("No Handphone: $oldPhoneNo -> $phoneNo\n")
+        }
+        if (gender != oldGender) {
+            changeLog.append("Gender: $oldGender -> $gender\n")
+        }
+        if (userModel.profileImage != oldProfileImage) {
+            changeLog.append("Profile Photo Changed\n")
+        }
+
+        if (changeLog.isNotEmpty()) {
+            saveChangeLogToFile(changeLog.toString())
+        }
+    }
+
+
+    private fun saveChangeLogToFile(changeLog: String) {
+        val directory = getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS)
+        val logFile = File(directory, "changelog.txt")
+
+        try {
+            if (!logFile.exists()) {
+                logFile.createNewFile()
+            }
+
+            val writer = FileWriter(logFile, true)
+            writer.appendLine("Changes made at ${SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault()).format(Date())}:")
+            writer.appendLine(changeLog)
+            writer.appendLine("---------------------------------------------")
+            writer.flush()
+            writer.close()
+        } catch (e: IOException) {
+            e.printStackTrace()
+        }
     }
 
     private fun isValidEmail(email: CharSequence): Boolean {
@@ -181,7 +226,7 @@ class FormActivity : AppCompatActivity(), View.OnClickListener {
                     binding.ivProfile.setImageURI(uri)
                     userModel.profileImage = imageFile.absolutePath
                 } else {
-                    Toast.makeText(this, "Gagal menyimpan gambar", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Failed to save image", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -192,9 +237,9 @@ class FormActivity : AppCompatActivity(), View.OnClickListener {
         val imageFileName = "JPEG_" + timeStamp + "_"
         val storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES)
         val imageFile = File.createTempFile(
-            imageFileName,  /* prefix */
-            ".jpg",         /* suffix */
-            storageDir      /* directory */
+            imageFileName,
+            ".jpg",
+            storageDir
         )
         try {
             val inputStream = contentResolver.openInputStream(uri)

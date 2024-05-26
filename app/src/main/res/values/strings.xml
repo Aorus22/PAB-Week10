@@ -8,13 +8,16 @@
     <string name="female">Female</string>
     <string name="save">Simpan</string>
     <string name="gender">Gender</string>
-    <string name="change">Ubah</string>
+    <string name="change">Change</string>
     <string name="dummy_name">Nadif</string>
     <string name="dummy_email">alyzanadif04@gmail.com</string>
     <string name="dummynumber">123456</string>
     <string name="dummyage">30</string>
-    <string name="dummyisgender">male</string>
+    <string name="dummyisgender">Male</string>
     <string name="dark_mode">Dark Mode</string>
     <string name="choose_image">Choose Image</string>
     <string name="profile_photo">Profile Photo</string>
+    <string name="input_data">Input Data</string>
+    <string name="hide_change_log">Hide Change Log</string>
+    <string name="show_change_log">Show Change Log</string>
 </resources>
