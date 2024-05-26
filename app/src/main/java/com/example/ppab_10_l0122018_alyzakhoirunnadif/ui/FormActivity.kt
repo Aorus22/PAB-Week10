@@ -23,7 +23,7 @@ import java.util.*
 class FormActivity : AppCompatActivity(), View.OnClickListener {
 
     private lateinit var binding: ActivityFormBinding
-    private var selectedImageUri: String? = null
+    private lateinit var selectedImageUri: String
 
     companion object {
         const val EXTRA_TYPE_FORM = "extra_type_form"
@@ -31,9 +31,6 @@ class FormActivity : AppCompatActivity(), View.OnClickListener {
         const val RESULT_CODE = 101
         const val TYPE_ADD = 1
         const val TYPE_EDIT = 2
-        private const val FIELD_REQUIRED = "Field tidak boleh kosong"
-        private const val FIELD_DIGIT_ONLY = "Hanya boleh terisi numerik"
-        private const val FIELD_IS_NOT_VALID = "Email tidak valid"
         private const val PICK_IMAGE_REQUEST = 1
     }
 
@@ -69,10 +66,6 @@ class FormActivity : AppCompatActivity(), View.OnClickListener {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
         binding.btnSave.text = btnTitle
-
-        if (!userModel.profileImage.isNullOrEmpty()) {
-            binding.ivProfile.setImageURI(Uri.parse(userModel.profileImage))
-        }
     }
 
     private fun showPreferenceInForm() {
@@ -84,6 +77,10 @@ class FormActivity : AppCompatActivity(), View.OnClickListener {
             binding.rbMale.isChecked = true
         } else {
             binding.rbFemale.isChecked = true
+        }
+        if (!userModel.profileImage.isNullOrEmpty()) {
+            selectedImageUri = userModel.profileImage!!
+            binding.ivProfile.setImageURI(Uri.parse(selectedImageUri))
         }
     }
 
@@ -143,6 +140,10 @@ class FormActivity : AppCompatActivity(), View.OnClickListener {
         finish()
     }
 
+    private fun isValidEmail(email: CharSequence): Boolean {
+        return android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()
+    }
+
     private fun saveUser(name: String, email: String, age: String, phoneNo: String, gender: String, selectedImageUri:String) {
         val userPreference = UserPreference(this)
 
@@ -159,14 +160,15 @@ class FormActivity : AppCompatActivity(), View.OnClickListener {
         userModel.phoneNumber = phoneNo
         userModel.gender = gender
 
-        if (selectedImageUri.isNotEmpty() && oldProfileImage.isNotEmpty()) {
-            val oldImageFile = File(oldProfileImage)
-            if (oldImageFile.exists()) {
-                oldImageFile.delete()
+        if (selectedImageUri != oldProfileImage) {
+            if (selectedImageUri.isNotEmpty() && oldProfileImage.isNotEmpty()) {
+                val oldImageFile = File(oldProfileImage)
+                if (oldImageFile.exists()) {
+                    oldImageFile.delete()
+                }
+                userModel.profileImage = selectedImageUri
             }
         }
-
-        userModel.profileImage = selectedImageUri
 
         userPreference.setUser(userModel)
         Toast.makeText(this, "Data tersimpan", Toast.LENGTH_SHORT).show()
@@ -187,38 +189,13 @@ class FormActivity : AppCompatActivity(), View.OnClickListener {
         if (gender != oldGender) {
             changeLog.append("Gender: $oldGender -> $gender\n")
         }
-        if (userModel.profileImage != oldProfileImage) {
+        if (selectedImageUri != oldProfileImage) {
             changeLog.append("Profile Photo Changed\n")
         }
 
         if (changeLog.isNotEmpty()) {
             saveChangeLogToFile(changeLog.toString())
         }
-    }
-
-
-    private fun saveChangeLogToFile(changeLog: String) {
-        val directory = getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS)
-        val logFile = File(directory, "changelog.txt")
-
-        try {
-            if (!logFile.exists()) {
-                logFile.createNewFile()
-            }
-
-            val writer = FileWriter(logFile, true)
-            writer.appendLine("Changes made at ${SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault()).format(Date())}")
-            writer.appendLine(changeLog)
-            writer.appendLine("---------------------------------------------")
-            writer.flush()
-            writer.close()
-        } catch (e: IOException) {
-            e.printStackTrace()
-        }
-    }
-
-    private fun isValidEmail(email: CharSequence): Boolean {
-        return android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -266,5 +243,35 @@ class FormActivity : AppCompatActivity(), View.OnClickListener {
             e.printStackTrace()
         }
         return null
+    }
+
+    private fun saveChangeLogToFile(changeLog: String) {
+        val directory = getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS)
+        val logFile = File(directory, "changelog.txt")
+
+        try {
+            if (!logFile.exists()) {
+                logFile.createNewFile()
+            }
+
+            val writer = FileWriter(logFile, true)
+            writer.appendLine("Changes made at ${SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault()).format(Date())}")
+            writer.appendLine(changeLog)
+            writer.appendLine("---------------------------------------------")
+            writer.flush()
+            writer.close()
+        } catch (e: IOException) {
+            e.printStackTrace()
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (!userModel.profileImage.isNullOrEmpty() && userModel.profileImage != selectedImageUri) {
+            val oldImageFile = File(selectedImageUri)
+            if (oldImageFile.exists()) {
+                oldImageFile.delete()
+            }
+        }
     }
 }
